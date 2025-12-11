@@ -17,9 +17,11 @@
  * under the License.
  */
 
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { finalize } from 'rxjs/operators';
+import { NzTooltipDirective } from 'ng-zorro-antd/tooltip'; // 引入 Tooltip 指令
+import { fromEvent, Subscription } from 'rxjs'; // 引入 RxJS 相关
+import { finalize, throttleTime } from 'rxjs/operators';
 
 import { MonitorService } from '../../../service/monitor.service';
 
@@ -28,7 +30,7 @@ import { MonitorService } from '../../../service/monitor.service';
   templateUrl: './monitor-data-table.component.html',
   styleUrls: ['./monitor-data-table.component.less']
 })
-export class MonitorDataTableComponent implements OnInit {
+export class MonitorDataTableComponent implements OnInit, OnDestroy {
   @Input()
   get monitorId(): number {
     return this._monitorId;
@@ -66,10 +68,47 @@ export class MonitorDataTableComponent implements OnInit {
   scrollY: string = '100%';
   loading: boolean = false;
 
+  private scrollSub?: Subscription;
+  @ViewChildren(NzTooltipDirective) tooltips!: QueryList<NzTooltipDirective>;
+
+  @ViewChild('smallTable', { read: ElementRef })
+  set smallTableRef(element: ElementRef<HTMLElement> | undefined) {
+    if (element) {
+      setTimeout(() => {
+        this.bindTableScroll(element.nativeElement);
+      });
+    }
+  }
   constructor(private monitorSvc: MonitorService, private notifySvc: NzNotificationService) {}
 
   ngOnInit(): void {
     this.scrollY = `calc(${this.height} - 130px)`;
+  }
+
+  ngOnDestroy(): void {
+    this.scrollSub?.unsubscribe();
+  }
+
+  private bindTableScroll(tableEl: HTMLElement) {
+    const bodyEl = tableEl.querySelector('.ant-table-body');
+
+    this.scrollSub?.unsubscribe();
+
+    if (bodyEl) {
+      this.scrollSub = fromEvent(bodyEl, 'scroll')
+        .pipe(throttleTime(20, undefined, { leading: true, trailing: true }))
+        .subscribe(() => {
+          this.hideAllTooltips();
+        });
+    }
+  }
+
+  private hideAllTooltips() {
+    this.tooltips?.forEach(tooltip => {
+      if ((tooltip as any).visible) {
+        tooltip.hide();
+      }
+    });
   }
 
   loadData() {
