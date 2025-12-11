@@ -108,7 +108,13 @@
       </thead>
       <tbody>
         <tr *ngFor="let valueRow of smallTable.data">
-          <td *ngFor="let value of valueRow.values; let i = index" nzEllipsis nz-tooltip [nzTooltipTitle]="contentTemplate">
+          <td
+            *ngFor="let value of valueRow.values; let i = index"
+            nzEllipsis
+            nz-tooltip
+            [nzTooltipMouseEnterDelay]="0.5"
+            [nzTooltipTitle]="contentTemplate"
+          >
             <ng-container *ngTemplateOutlet="contentTemplate"></ng-container>
             <ng-template #contentTemplate>
               {{ value.origin }}
